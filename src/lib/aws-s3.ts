@@ -21,9 +21,17 @@ export function getSavedS3Config(): S3UploadConfig {
   }
 
   return {
-    bucketName: process.env.NEXT_PUBLIC_AWS_S3_BUCKET || "",
-    region: process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1",
-    useMockSandbox: !process.env.NEXT_PUBLIC_AWS_S3_BUCKET,
+    bucketName:
+      process.env.NEXT_PUBLIC_S3_BUCKET ||
+      process.env.NEXT_PUBLIC_AWS_S3_BUCKET ||
+      "",
+    region:
+      process.env.NEXT_PUBLIC_S3_REGION ||
+      process.env.NEXT_PUBLIC_AWS_REGION ||
+      "us-east-1",
+    useMockSandbox:
+      !process.env.NEXT_PUBLIC_S3_BUCKET &&
+      !process.env.NEXT_PUBLIC_AWS_S3_BUCKET,
   };
 }
 

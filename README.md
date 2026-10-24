@@ -140,10 +140,11 @@ In the **AWS Management Console** > **Amazon S3** > Your Bucket > **Permissions*
      phases:
        preBuild:
          commands:
+           - nvm use 20 || nvm install 20
            - npm ci --cache .npm --prefer-offline
        build:
          commands:
-           - env | grep -e AWS_ -e NEXT_PUBLIC_ >> .env.production
+           - env | grep -E '^(S3_|APP_|NEXT_PUBLIC_|GEMINI_|OPENAI_|AWS_)' >> .env.production || true
            - npm run build
      artifacts:
        baseDirectory: .next
@@ -155,11 +156,18 @@ In the **AWS Management Console** > **Amazon S3** > Your Bucket > **Permissions*
          - .npm/**/*
          - node_modules/**/*
    ```
-5. In **Advanced Settings** > **Environment Variables**, add:
-   - `AWS_REGION` = `your-region` (e.g. `us-east-1`)
-   - `AWS_S3_BUCKET_NAME` = `your-bucket-name`
-   - `AWS_ACCESS_KEY_ID` = `your-iam-access-key`
-   - `AWS_SECRET_ACCESS_KEY` = `your-iam-secret-key`
+5. In **Advanced Settings** > **Environment Variables**:
+   > ⚠️ **IMPORTANT**: AWS Amplify strictly reserves any variable name beginning with `AWS_`. Setting `AWS_ACCESS_KEY_ID` or `AWS_REGION` will cause: *"Environment variables cannot start with the reserved prefix 'AWS'"*.
+   > 
+   > Instead, enter the **`S3_*`** variables below (the app automatically resolves them):
+   - `S3_BUCKET_NAME` = `your-bucket-name` (e.g. `amzn-hackathon`)
+   - `S3_REGION` = `your-region` (e.g. `us-east-1`)
+   - `S3_ACCESS_KEY_ID` = `your-iam-access-key`
+   - `S3_SECRET_ACCESS_KEY` = `your-40-character-iam-secret-key`
+   - `NEXT_PUBLIC_S3_BUCKET` = `your-bucket-name`
+   - `NEXT_PUBLIC_S3_REGION` = `your-region`
+   - `OPENAI_API_KEY` (optional)
+   - `GEMINI_API_KEY` (optional)
 6. Click **Save and Deploy**.
 7. AWS Amplify Hosting will automatically build, provision, and deploy your application with an SSL-enabled CloudFront distribution.
 

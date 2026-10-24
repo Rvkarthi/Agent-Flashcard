@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getResolvedS3Credentials } from "@/lib/server-env";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,48 +15,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Validate & trim AWS environment variables
-    const accessKeyId = (
-      process.env.AWS_ACCESS_KEY_ID ||
-      process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID ||
-      ""
-    ).trim();
+    // Resolves credentials supporting S3_* for AWS Amplify (where AWS_* is blocked)
+    const { bucketName, region, accessKeyId, secretAccessKey, hasCredentials } =
+      getResolvedS3Credentials(customBucket, customRegion);
 
-    const secretAccessKey = (
-      process.env.AWS_SECRET_ACCESS_KEY ||
-      process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY ||
-      ""
-    ).trim();
-
-    const region = (
-      customRegion ||
-      process.env.AWS_REGION ||
-      process.env.NEXT_PUBLIC_AWS_REGION ||
-      "us-east-1"
-    ).trim();
-
-    const bucketName = (
-      customBucket ||
-      process.env.AWS_S3_BUCKET_NAME ||
-      process.env.NEXT_PUBLIC_AWS_S3_BUCKET ||
-      ""
-    ).trim();
-
-    // 2. Sanitize S3 Object Key: strictly alphanumeric, dots, and hyphens
-    // Prevents URI encoding/decoding mismatches between client & AWS SigV4
+    // Sanitize S3 Object Key
     const sanitizedFileName = fileName
       .replace(/[^a-zA-Z0-9.-]/g, "_")
       .replace(/_{2,}/g, "_");
     const timestamp = Date.now();
     const key = `study-documents/${timestamp}-${sanitizedFileName}`;
 
-    // Normalize MIME type
-    const normalizedContentType = fileType && fileType.trim().length > 0
-      ? fileType.trim().toLowerCase()
-      : "application/octet-stream";
+    const normalizedContentType =
+      fileType && fileType.trim().length > 0
+        ? fileType.trim().toLowerCase()
+        : "application/octet-stream";
 
-    // 3. Generate Presigned URL if credentials are present
-    if (bucketName && accessKeyId && secretAccessKey) {
+    if (hasCredentials) {
       const s3Client = new S3Client({
         region,
         credentials: {
@@ -64,9 +40,6 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // EXACT HEADER ALIGNMENT:
-      // Sign with exact normalized ContentType so S3 stores correct metadata.
-      // The frontend MUST send this exact Content-Type header.
       const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: key,
@@ -74,7 +47,7 @@ export async function POST(req: NextRequest) {
       });
 
       const presignedUrl = await getSignedUrl(s3Client, command, {
-        expiresIn: 3600, // 1 hour
+        expiresIn: 3600,
       });
 
       const s3Uri = `s3://${bucketName}/${key}`;
@@ -93,7 +66,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. Sandbox fallback if AWS credentials are not configured on server
+    // Sandbox fallback
     return NextResponse.json({
       success: true,
       presignedUrl: null,
@@ -104,8 +77,6 @@ export async function POST(req: NextRequest) {
       publicUrl: `https://${bucketName || "amplify-study-docs-sandbox"}.s3.${region}.amazonaws.com/${key}`,
       contentType: normalizedContentType,
       mode: "sandbox",
-      message:
-        "AWS credentials not detected. Operating in sandbox mode with simulated direct S3 upload.",
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to generate presigned URL";

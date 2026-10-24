@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { getResolvedS3Credentials } from "@/lib/server-env";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -7,24 +8,10 @@ export async function GET(req: NextRequest) {
     const customBucket = searchParams.get("bucket");
     const customRegion = searchParams.get("region");
 
-    const bucketName =
-      customBucket ||
-      process.env.AWS_S3_BUCKET_NAME ||
-      process.env.NEXT_PUBLIC_AWS_S3_BUCKET;
-    const region =
-      customRegion ||
-      process.env.AWS_REGION ||
-      process.env.NEXT_PUBLIC_AWS_REGION ||
-      "us-east-1";
+    const { bucketName, region, accessKeyId, secretAccessKey, hasCredentials } =
+      getResolvedS3Credentials(customBucket, customRegion);
 
-    const accessKeyId =
-      process.env.AWS_ACCESS_KEY_ID ||
-      process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID;
-    const secretAccessKey =
-      process.env.AWS_SECRET_ACCESS_KEY ||
-      process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY;
-
-    if (bucketName && accessKeyId && secretAccessKey) {
+    if (hasCredentials) {
       const s3Client = new S3Client({
         region,
         credentials: {

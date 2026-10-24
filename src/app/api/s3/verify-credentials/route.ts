@@ -1,52 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { getResolvedS3Credentials } from "@/lib/server-env";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const { customBucket, customRegion, customKeyId, customSecretKey } = body;
 
-    const accessKeyId = (
-      customKeyId ||
-      process.env.AWS_ACCESS_KEY_ID ||
-      process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID ||
-      ""
-    ).trim();
-
-    const secretAccessKey = (
-      customSecretKey ||
-      process.env.AWS_SECRET_ACCESS_KEY ||
-      process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY ||
-      ""
-    ).trim();
-
-    const bucketName = (
-      customBucket ||
-      process.env.AWS_S3_BUCKET_NAME ||
-      process.env.NEXT_PUBLIC_AWS_S3_BUCKET ||
-      ""
-    ).trim();
-
-    const region = (
-      customRegion ||
-      process.env.AWS_REGION ||
-      process.env.NEXT_PUBLIC_AWS_REGION ||
-      "us-east-1"
-    ).trim();
+    const { bucketName, region, accessKeyId, secretAccessKey } =
+      getResolvedS3Credentials(customBucket, customRegion, customKeyId, customSecretKey);
 
     // 1. Length validation check
     const issues: string[] = [];
     if (!accessKeyId) {
-      issues.push("AWS_ACCESS_KEY_ID is missing.");
+      issues.push("S3_ACCESS_KEY_ID (or AWS_ACCESS_KEY_ID) is missing.");
     } else if (accessKeyId.length !== 20) {
-      issues.push(`AWS_ACCESS_KEY_ID has length ${accessKeyId.length} (expected: 20 characters, starting with AKIA...)`);
+      issues.push(`S3 Access Key ID has length ${accessKeyId.length} (expected: 20 characters, starting with AKIA...)`);
     }
 
     if (!secretAccessKey) {
-      issues.push("AWS_SECRET_ACCESS_KEY is missing.");
+      issues.push("S3_SECRET_ACCESS_KEY (or AWS_SECRET_ACCESS_KEY) is missing.");
     } else if (secretAccessKey.length !== 40) {
       issues.push(
-        `AWS_SECRET_ACCESS_KEY has length ${secretAccessKey.length} characters (AWS Secret Access Keys are always exactly 40 characters). It appears ${
+        `S3 Secret Access Key has length ${secretAccessKey.length} characters (AWS Secret Access Keys are always exactly 40 characters). It appears ${
           40 - secretAccessKey.length
         } characters were cut off when pasting!`
       );

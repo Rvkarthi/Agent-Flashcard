@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { generateFlashcardsFromText } from "@/lib/flashcard-generator";
 import { GenerationOptions } from "@/types";
+import { getResolvedS3Credentials } from "@/lib/server-env";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require("pdf-parse/lib/pdf-parse.js");
 
@@ -14,28 +15,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required S3 key" }, { status: 400 });
     }
 
-    const bucketName =
-      customBucket ||
-      process.env.AWS_S3_BUCKET_NAME ||
-      process.env.NEXT_PUBLIC_AWS_S3_BUCKET;
-    const region =
-      customRegion ||
-      process.env.AWS_REGION ||
-      process.env.NEXT_PUBLIC_AWS_REGION ||
-      "us-east-1";
-
-    const accessKeyId =
-      process.env.AWS_ACCESS_KEY_ID ||
-      process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID;
-    const secretAccessKey =
-      process.env.AWS_SECRET_ACCESS_KEY ||
-      process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY;
+    const { bucketName, region, accessKeyId, secretAccessKey, hasCredentials } =
+      getResolvedS3Credentials(customBucket, customRegion);
 
     let extractedText = "";
     const fileName = key.split("/").pop() || key;
     let fileSize = 0;
 
-    if (bucketName && accessKeyId && secretAccessKey) {
+    if (hasCredentials) {
       const s3Client = new S3Client({
         region,
         credentials: {

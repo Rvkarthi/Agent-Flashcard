@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getResolvedS3Credentials } from "@/lib/server-env";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,22 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const bucketName =
-      customBucket ||
-      process.env.AWS_S3_BUCKET_NAME ||
-      process.env.NEXT_PUBLIC_AWS_S3_BUCKET;
-    const region =
-      customRegion ||
-      process.env.AWS_REGION ||
-      process.env.NEXT_PUBLIC_AWS_REGION ||
-      "us-east-1";
-
-    const accessKeyId =
-      process.env.AWS_ACCESS_KEY_ID ||
-      process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID;
-    const secretAccessKey =
-      process.env.AWS_SECRET_ACCESS_KEY ||
-      process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY;
+    const { bucketName, region, accessKeyId, secretAccessKey, hasCredentials } =
+      getResolvedS3Credentials(customBucket, customRegion);
 
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const timestamp = Date.now();
@@ -36,7 +23,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    if (bucketName && accessKeyId && secretAccessKey) {
+    if (hasCredentials) {
       const s3Client = new S3Client({
         region,
         credentials: {
