@@ -85,3 +85,9 @@ body {
 .animate-pulse-subtle {
   animation: pulse-subtle 4s ease-in-out infinite;
 }
+
+@keyframes border-beam {
+  100% {
+    offset-distance: 100%;
+  }
+}

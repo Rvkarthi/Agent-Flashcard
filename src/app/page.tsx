@@ -51,10 +51,19 @@ function getClientDecks(): StudyDeck[] {
 export default function Home() {
   const isMounted = useMounted();
   const [activeDeck, setActiveDeck] = useState<StudyDeck | null>(null);
-  const [savedDecks, setSavedDecks] = useState<StudyDeck[]>(() => getClientDecks());
+  const [savedDecks, setSavedDecks] = useState<StudyDeck[]>([]);
   const [isS3ConfigOpen, setIsS3ConfigOpen] = useState(false);
-  const [s3Config, setS3Config] = useState<S3UploadConfig>(() => getSavedS3Config());
+  const [s3Config, setS3Config] = useState<S3UploadConfig>({
+    bucketName: "",
+    region: "us-east-1",
+    useMockSandbox: true,
+  });
   const [activeTab, setActiveTab] = useState<"upload" | "s3_browser">("upload");
+
+  React.useEffect(() => {
+    setSavedDecks(getClientDecks());
+    setS3Config(getSavedS3Config());
+  }, []);
 
   const saveDeckToHistory = (deck: StudyDeck) => {
     setActiveDeck(deck);

@@ -4,7 +4,7 @@ frontend:
     preBuild:
       commands:
         - nvm use 20 || nvm install 20
-        - npm ci --cache .npm --prefer-offline
+        - npm ci --include=dev --cache .npm --prefer-offline
     build:
       commands:
         - env | grep -E '^(S3_|APP_|NEXT_PUBLIC_|GEMINI_|OPENAI_|AWS_)' >> .env.production || true
@@ -16,5 +16,4 @@ frontend:
   cache:
     paths:
       - .next/cache/**/*
-      - .npm/**/*
       - node_modules/**/*
